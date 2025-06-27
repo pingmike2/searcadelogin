@@ -1,0 +1,47 @@
+name: Searcade Login Check
+
+on:
+  schedule:
+    # 每天 UTC 时间 00:00 运行
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 允许手动触发工作流
+
+jobs:
+  login-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9' # 可以选择您需要的Python版本
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+
+      - name: Install Playwright browsers
+        run: playwright install chromium
+
+      - name: Run login script
+        env:
+          SEARCADE_ACCOUNTS: ${{ secrets.SEARCADE_ACCOUNTS }}
+          # 移除了 TEL_TOK 和 TEL_ID 的环境变量配置，因为脚本不再使用它们
+          # TEL_TOK: ${{ secrets.TEL_TOK }}
+          # TEL_ID: ${{ secrets.TEL_ID }}
+        run: python searcade_login.py
+        # 移除了 continue-on-error: true
+        # 因为我们希望脚本在失败时立即标记此步骤为失败，从而触发截图上传
+
+      - name: Upload screenshots on failure
+        # 仅在工作流的任何一个步骤失败时执行
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-on-failure
+          # 匹配所有以 .png 结尾的文件，这些是我们脚本中保存的截图
+          path: "*.png"
