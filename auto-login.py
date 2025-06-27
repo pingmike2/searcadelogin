@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from os import getenv
-
+import traceback
 # 登录页面和登录提交的URL
 LOGIN_URL = "https://searcade.userveria.com/login/"
 DASHBOARD_URL = "https://searcade.com/en/"
