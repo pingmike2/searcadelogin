@@ -3,8 +3,8 @@ from bs4 import BeautifulSoup
 from os import getenv
 
 # 登录页面和登录提交的URL
-LOGIN_URL = "https://searcade.userveria.com/login"
-DASHBOARD_URL = "https://searcade.com/en"
+LOGIN_URL = "https://searcade.userveria.com/login/"
+DASHBOARD_URL = "https://searcade.com/en/"
 
 # 用户凭证（通过变量管理）
 USERNAME = getenv('USERNAME')  # 通过环境变量获取
