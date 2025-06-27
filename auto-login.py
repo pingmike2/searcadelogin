@@ -33,50 +33,60 @@ def send_telegram_message(message):
 session = requests.Session()
 
 def login():
-    payload = {
-        "email": USERNAME,  # 用户名/邮箱
-        "password": PASSWORD  # 密码
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Referer': LOGIN_URL
     }
+    
     try:
-        # 获取登录页面并解析隐藏字段 (如有必要)
-        response = session.get(LOGIN_URL)
+        # 获取登录页面
+        response = session.get(LOGIN_URL, headers=headers)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-
-        # 提取隐藏字段(如果有，比如csrf_token)
-        hidden_inputs = soup.find_all("input", type="hidden")
-        for hidden in hidden_inputs:
-            payload[hidden['name']] = hidden['value']
-
-        # 提交登录表单
-        login_response = session.post(LOGIN_URL, data=payload)
-        login_response.raise_for_status()
-
-        # 检查是否成功登录
-        if "admin" in login_response.url or "Welcome" in login_response.text:
-            message = "✅ **登录成功！**\n已成功登录 searcade 仪表板。"
-        else:
-            message = "❌ **登录失败！**\n请检查 searcade 用户名和密码是否正确。"
-        print(message)
         
-        # 发送Telegram消息
-        send_telegram_message(message)
-
-        # 访问受保护页面 (如用户仪表板)
-        dashboard_response = session.get(DASHBOARD_URL)
-        if dashboard_response.status_code == 200:
-            dashboard_message = "✅ **成功访问仪表板！**"
-            print(dashboard_message)
-            send_telegram_message(dashboard_message)
+        # 准备payload - 先检查实际表单字段
+        payload = {
+            "email": USERNAME,  # 可能需要改为username或其他字段
+            "password": PASSWORD
+        }
+        
+        # 添加所有隐藏字段
+        for hidden in soup.find_all("input", type="hidden"):
+            payload[hidden['name']] = hidden['value']
+        
+        # 添加Content-Type头
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        
+        # 提交登录
+        login_response = session.post(LOGIN_URL, 
+                                    data=payload, 
+                                    headers=headers,
+                                    allow_redirects=True)
+        
+        # 调试输出
+        print("Login response URL:", login_response.url)
+        print("Status code:", login_response.status_code)
+        
+        # 检查登录成功条件可能需要调整
+        if login_response.status_code == 200 and ("admin" in login_response.url.lower() or "Welcome" in login_response.text.lower()):
+            message = "✅ **登录成功！**"
         else:
-            dashboard_message = "❌ **访问仪表板失败！**"
-            print(dashboard_message)
-            send_telegram_message(dashboard_message)
+            message = f"❌ **登录可能失败！**\n状态码: {login_response.status_code}\nURL: {login_response.url}"
+        
+        print(message)
+        send_telegram_message(message)
+        
+        # 尝试访问仪表板
+        dashboard_response = session.get(DASHBOARD_URL, headers=headers)
+        if dashboard_response.status_code == 200:
+            print("✅ 成功访问仪表板")
+        else:
+            print(f"❌ 仪表板访问失败，状态码: {dashboard_response.status_code}")
     
-    except requests.exceptions.RequestException as e:
-        error_message = f"⚠️ **请求发生错误：**\n{e}"
-        print(error_message)
-        send_telegram_message(error_message)
+    except Exception as e:
+        error_msg = f"⚠️ **错误详情：**\n{str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        send_telegram_message(error_msg)
 
 if __name__ == "__main__":
     login()
